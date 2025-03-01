@@ -18,6 +18,8 @@ from dash import dcc, html
 
 # app.title = "PsySys"
 
+server = app.server
+
 # Import callbacks 
 from callbacks.layout_callbacks import register_layout_callbacks
 from callbacks.editing_callbacks import register_editing_callbacks
