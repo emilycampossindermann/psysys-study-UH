@@ -18,7 +18,7 @@ app.index_string = '''
 <!DOCTYPE html>
 <html>
 <head>
-    <script defer data-domain="https://psysys-study-uh.onrender.com" src="https://plausible.io/js/script.js"></script>
+    <script defer data-domain="psysys-study-uh.onrender.com" src="https://plausible.io/js/script.js"></script>
     {%metas%}
     <title>{%title%}</title>
     {%favicon%}
