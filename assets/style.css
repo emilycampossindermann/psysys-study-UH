@@ -1,0 +1,653 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+style.css
+
+/* body {
+    font-family: 'Outfit', sans-serif;
+    font-style: normal;
+    font-weight: normal;
+  } */
+
+body {
+    background: linear-gradient(135deg, #ffffff, #c2e9fb, #a1c4fd, #cbb4d4);
+    background-size: 200% 200%; /* Makes the gradient smoother */
+    animation: gradientAnimation 12s ease infinite; /* Optional animation */
+    margin: 0;
+    font-family: 'Arial', sans-serif; /* Example font */
+}
+
+@keyframes gradientAnimation {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.sidebar {
+    height: 100vh; /* Full height */
+    position: fixed; /* Fixed, to stay in place during page scroll */
+    right: 0; /* Align to the right side */
+    top: 0; /* Align to the top */
+    overflow-x: hidden; /* Hide horizontal overflow */
+    transition: width 0.5s; /* Smooth transition for width */
+}
+
+.sidebar-collapsed {
+    width: 50px; /* Width of the sidebar when collapsed */
+}
+
+.sidebar-expanded {
+    width: 250px; /* Width of the sidebar when expanded */
+}
+
+.content-container {
+    transition: margin-right 0.5s; /* Smooth transition for margin */
+    /* Other styling for content */
+}
+
+.content-container-expanded {
+    margin-right: 250px; /* Adjust the margin to match the expanded sidebar */
+}
+
+.radio-group {
+    padding-left: 0px; /* Adjust the padding to move the group to the left */
+}
+
+/* Specific styles for your toggle */
+.btn-check:checked + .btn-outline-primary {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.custom-textarea {
+    border-radius: 10px !important;
+    border: 1px solid #CCCCCC;
+}
+
+/* In your CSS file (e.g., assets/main.css) */
+.node-tooltip {
+    background-color: #fff;
+    border-color: #000;
+    border-width: 1px;
+    border-style: solid;
+    font-size: 12px;
+    padding: 5px;
+    z-index: 9999; /* Ensure tooltip is displayed above other elements */
+    display: none; /* Initially hidden */
+}
+
+.node:hover .node-tooltip {
+    display: block;
+}
+
+.custom-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.custom-switch-input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.custom-switch-input:checked + .slider {
+    background-color: #2196F3;
+}
+
+.custom-switch-input:focus + .slider {
+    box-shadow: 0 0 1px #2196F3;
+}
+
+.custom-switch-input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* Slider */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: transparent;
+    color: white;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.timeline-slider .rc-slider-mark-text {
+    color: white !important; /* Change label color to white */
+    font-family: Outfit, sans-serif; /* Use the desired font family */
+    font-size: 14px; /* Adjust font size */
+}
+
+.timeline-slider .rc-slider-track {
+    background-color: rgba(255, 255, 255, 0.5); /* Adjust track color */
+}
+
+.timeline-slider .rc-slider-handle {
+    border: 2px solid white; /* Adjust handle border */
+    background-color: #6F4CFF; /* Adjust handle color */
+}
+
+
+.top-bar {
+    background-color: #007bff; /* Primary color */
+    height: 50px; /* Increased height for better visibility */
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000; /* Ensures it's above other content */
+}
+
+.content-wrapper {
+    margin-top: 60px; /* Adjusted margin to leave space below the top bar */
+    padding: 20px;
+}
+
+.video-wrapper {
+    position: relative; /* Relative positioning for the video container */
+    z-index: 1; /* Ensure it's above the blue bar */
+}
+
+.video-embed {
+    width: 100%;
+    height: 400px; /* Adjust height as needed */
+    position: absolute;
+    top: -200px; /* Adjust this value to position the video above the blue bar */
+    z-index: 2; /* Ensure the video is above other content */
+}
+.nav-yellow {
+    /*background-color: #516395 !important;  /* Set background color to yellow */
+    background-color: white
+}
+/* Example to remove colored box around selected icons */
+.selected-icon {
+    box-shadow: none !important; /* Remove any box shadow */
+    border: none !important; /* Remove any border */
+    /* Add other necessary styles to customize further */
+}
+
+.nav-primary .nav-link.active {
+    background-color: white !important; /* Your custom color */
+    color: #6F4CFF!important; /*#516395; #CB6CE6 Custom text color if needed */
+}
+
+/* Default NavLink styling */
+.nav-primary .nav-link {
+    color: white; /* Default text color */
+    border: none; /* Remove default border */
+    padding: 10px 15px; /* Adjust padding as needed */
+    transition: all 0.3s ease-in-out; /* Smooth transition */
+    font-family: 'Outfit', sans-serif;
+    font-weight: 200; 
+}
+
+/* Styling for the active NavLink */
+.nav-primary .nav-link.active {
+    color: #000000; /* Change active text color */
+    border: none; /* Remove default border */
+    /*border-bottom: 3px solid #007bff;  Add a blue line underneath */
+    background: none; /* Remove the background color */
+    font-weight: 400; /* Optional: Make active text bold */
+    padding-bottom: 5px; /* Adjust padding to fit the line */
+}
+
+/* Hover effects for NavLink */
+.nav-primary .nav-link:hover {
+    color: #6F4CFF; /* Hover text color */
+    background: none; /* No background change on hover */
+}
+
+/* assets/styles.css */
+.outer-div {
+    position: relative;
+    height: 320px; /* Adjust height as needed */
+    overflow: hidden;
+    width: 100%; /* Full width of the container */
+}
+
+.inner-div {
+    width: 100%;
+    overflow-y: auto;
+    height: 100%;
+    padding-right: 15px; /* Adjust padding to ensure no content is hidden */
+}
+
+#likert-scales-container::-webkit-scrollbar {
+    width: 12px;
+}
+
+#likert-scales-container::-webkit-scrollbar-track {
+    background: transparent; 
+    border-radius: 10px;
+}
+
+#likert-scales-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.65); 
+    border-radius: 10px;
+}
+
+#likert-scales-container::-webkit-scrollbar-thumb:hover {
+    background: #8793c9; 
+}
+
+/* assets/styles.css */
+
+/* .blur {
+    filter: blur(5px);
+    transition: filter 0.3s ease;
+}
+
+.no-blur {
+    filter: none;
+    transition: filter 0.3s ease;
+} */
+
+.darken {
+    background-color: rgba(0, 0, 0, 0.534);  /* Semi-transparent black overlay */
+    transition: background-color 0.3s ease;
+}
+
+.no-darken {
+    background-color: transparent;  /* Normal background */
+    transition: background-color 0.3s ease;
+}
+
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5); /* Same overlay for both modals */
+}
+
+/* Custom CSS for icon hover effects */
+
+/* Add smooth transition to the icons */
+.nav-icon {
+    transition: transform 0.3s ease, color 0.3s ease; /* Add smooth transition for color and scale */
+}
+
+/* Only the icon changes color and scales up on hover */
+.nav-link:hover .nav-icon {
+    transform: scale(1.2);  /* Scale the icon to make it pop */
+}
+
+/* Optional: If you want to change the background or text of the NavLink itself (without affecting the icon) */
+.nav-link {
+    transition: background-color 0.3s ease;
+}
+
+.nav-link:hover {
+    background-color: transparent;  /* Ensure background stays transparent */
+    color: inherit;  /* Ensure text color stays the same */
+}
+
+.multi-color-text {
+    font-size: 600; /* Adjust the font size */
+    font-family: 'Outfit'; /* Use your desired font */
+    color: black; /* Base color (main text color) */
+    text-shadow: 
+        0.8px 0.8px magenta, /* Magenta offset */
+        -0.8px -0.8px cyan;  /* Cyan offset */
+}
+
+/*.glowing-button {
+    box-shadow: 0 0 10px #004AAD, 0 0 20px #AE52FF, 0 0 30px #CB6CE6;
+    transition: box-shadow 0.5s ease-in-out;
+}*/
+
+.glowing-button:hover {
+    box-shadow: 0 0 5px #004AAD, 0 0 10px #AE52FF, 0 0 15px #CB6CE6;
+    transition: box-shadow 0.5s ease-in-out;
+}
+
+/* NavLink Style */
+.nav-link-custom {
+    color: #4A4A8D; /* Default color */
+    font-weight: 300; /* Light font weight */
+    font-size: 18px;
+    text-decoration: none;
+    transition: color 0.3s ease; /* Smooth transition */
+}
+
+/* Hover Effect */
+.nav-link-custom:hover {
+    color: #6F4CFF; /* Color on hover */
+}
+
+/* Active State */
+.nav-link-custom.active {
+    color: #6F4CFF; /* Color for active NavLink */
+    font-weight: 400; /* Slightly bolder font for active state */
+}
+
+/* Sticky container for text block and dropdown */
+.sticky-container {
+    position: sticky;
+    top: 20px; /* Adjust based on the desired fixed position */
+    z-index: 10;
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Likert scales container */
+#likert-scales-container {
+    margin-top: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 0; /* Correct layering below the dropdown */
+    padding: 15px;
+    /*background-color: #f8f9fa;*/
+    background-color: white;
+    /*border-radius: 8px;*/
+    /*box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
+}
+
+/* Progress bar container */
+.progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 100px;
+    position: relative;
+}
+
+/* Connecting line */
+.progress-bar .line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #ccc;
+    z-index: 0; /* Place line behind circles */
+}
+
+.progress-bar .line.completed {
+    background-color: #4caf50;
+}
+
+/* Step circles */
+.progress-bar .circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #ccc;
+    color: #ccc;
+    font-weight: 300;
+    font-family: "Outfit", sans-serif;
+    z-index: 1; /* Place circles above line */
+}
+
+.progress-bar .circle.completed {
+    background-color: #4caf50;
+    color: white;
+}
+
+.progress-bar .circle.current {
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+/* Labels below the circles */
+.progress-bar .label {
+    margin-top: 5px;
+    font-family: "Outfit", sans-serif;
+    font-weight: 300;
+    color: #ccc;
+}
+
+.progress-bar .label.completed {
+    color: #4caf50;
+}
+
+@keyframes move-glow-1 {
+    0% {
+        /*transform: translate(0px, 0px) rotate(0deg);*/
+        opacity: 0.4;
+    }
+    100% {
+        /*transform: translate(1px, -1px) rotate(0deg);*/
+        opacity: 0.9;
+    }
+}
+
+@keyframes move-glow-2 {
+    0% {
+        /*transform: translate(0px, 0px) rotate(0deg);*/
+        opacity: 0.3;
+    }
+    100% {
+        /*transform: translate(-0px, 0px) rotate(0deg);*/
+        opacity: 0.7;
+    }
+}
+
+@keyframes move-glow-3 {
+    0% {
+        /*transform: translate(0px, 0px) rotate(0deg);*/
+        opacity: 0.2;
+    }
+    100% {
+        /*transform: translate(0px, -0px) rotate(0deg);*/
+        opacity: 0.8;
+    }
+}
+
+.feature-box:hover {
+    transform: scale(1.05); /* Slightly enlarge box on hover */
+    cursor: pointer;        /* Show pointer cursor */
+}
+
+
+/* Dropdown Container */
+.dropdown-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* Dropdown Content */
+.dropdown-content {
+    display: none; /* Hidden by default */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 220px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    z-index: 1000;
+    overflow: hidden; /* Ensure clean box edges */
+    font-family: 'Outfit', sans-serif !important;
+}
+
+.dropdown-content .dropdown-link {
+    display: block;
+    padding: 12px 20px;
+    color: #4A4A8D;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 300;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-family: 'Outfit', sans-serif !important;
+}
+
+.dropdown-content .dropdown-link:hover {
+    background-color: #F4F4FF; /* Light background hover */
+    color: #6F4CFF;
+}
+
+/* Show Dropdown on Hover */
+.dropdown-container:hover .dropdown-content {
+    display: block;
+}
+
+/* Optional: Rounded Edge for Sub-Dropdown Items */
+.dropdown-item {
+    border-bottom: 1px solid #ddd;
+}
+
+/* 🔹 Ensure the dropdown label is black */
+.demo-dropdown .dropdown-toggle {
+    color: black !important;
+    font-weight: 300 !important;
+    font-family: 'Outfit', sans-serif !important;
+}
+
+/* 🔹 Open dropdown on hover */
+.demo-dropdown:hover .dropdown-menu {
+    display: block !important;
+    margin-top: 10px !important;  /* Adjust spacing */
+}
+
+/* 🔹 Style the dropdown box */
+.demo-dropdown .dropdown-menu {
+    background: rgba(255, 255, 255, 0.95) !important;  /* Softer white */
+    border-radius: 10px !important;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1) !important;
+    border: none !important;
+}
+
+/* 🔹 Dropdown items */
+.demo-dropdown .dropdown-item {
+    color: black !important;
+    font-size: 16px !important;
+    font-weight: 300 !important;
+    padding: 12px 20px !important;  /* Add spacing */
+}
+
+/* 🔹 Dropdown items hover effect */
+.demo-dropdown .dropdown-item:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+    border-radius: 5px !important;
+}
+
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+#graph-container {
+    width: 90%;
+    height: 90%;
+    border-radius: 15px;
+    background-color: transparent; /* Desired background color */
+    padding: 10px; /* Add padding to give space around the graph */
+}
+
+.delete-button:hover {
+    transform: scale(1.05);  /* Slightly enlarge */
+    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2);  /* Enhance shadow */
+    transition: 0.5s;
+}
+
+.button-hover-gradient {
+    display: inline-block;
+    padding: 15px 30px;
+    font-family: "Outfit", sans-serif;
+    font-weight: 500;
+    font-size: 18px;
+    color: white;
+    text-align: center;
+    border: none;
+    border-radius: 50px;
+    background: transparent;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.button-hover-gradient:hover {
+    transform: scale(1.1); /* Slight enlargement on hover */
+    background: linear-gradient(to right, #9B84FF, #6F4CFF, #5738C8); /* Gradient on hover */
+    color: white; /* Ensure text color remains visible */
+    box-shadow: 0px 6px 12px rgba(111, 76, 255, 0.5); /* More pronounced shadow on hover */
+}
+
+.custom-dropdown {
+    font-family: 'Outfit', sans-serif;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 30px;
+    transition: all 0.3s ease;
+}
+
+.custom-dropdown:hover {
+    border-color: #6F4CFF;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.hover-enlarge {
+    transition: transform 0.2s ease-in-out;
+}
+
+.hover-enlarge:hover {
+    transform: scale(1.1); /* Enlarges the image slightly */
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* Adds shadow on hover */
+}
+
+/* General Navbar Styling */
+/* Ensure nav links are always visible */
+.navbar-nav {
+    display: flex !important;
+}
+
+@media (max-width: 768px) {
+    .navbar-nav {
+        display: block !important; /* Show links properly on mobile */
+    }
+}
+
+/* Fix dropdown hover */
+.dropdown-menu {
+    font-size: 14px;
+    padding: 5px;
+}
+
+/* Force Demo dropdown label to be black */
+.demo-nav-fix > .dropdown-toggle {
+    color: black !important;  /* Force text color */
+    font-weight: 300 !important;
+    font-family: 'Outfit', sans-serif !important;
+}
+
+/* Override Bootstrap's default blue for dropdown items */
+.demo-nav-fix .dropdown-item {
+    color: black !important; 
+}
+
+.demo-nav-fix .dropdown-item:hover {
+    background-color: rgba(0, 0, 0, 0.1) !important; /* Light hover effect */
+}
+
+
+
+
+
+
+
