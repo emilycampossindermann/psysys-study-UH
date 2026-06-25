@@ -1,6 +1,9 @@
-import json, base64, requests, datetime
+import json, base64, requests, os, datetime
 from functions.map_style import calculate_degree_centrality
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Format graph data to export
 def format_export_data(data, current_style, severity_scores, edge_data, annotations):
@@ -47,34 +50,52 @@ def format_export_data(data, current_style, severity_scores, edge_data, annotati
 
     return exported_data
 
-# Send graph file to github
+# Send graph file to GitHub
+# Returns (success: bool, status_code: int | str)
 def send_to_github(data):
-    # Replace with your own GitHub repository details
-    repo_owner = 'emilycampossindermann'
-    #repo_name = 'PsySys_2.0'
-    repo_name = 'psysys_app'
-    #current_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    current_date = datetime.now().strftime("%y/%m/%d-%H:%M")
-    file_path = f"data-donation/graph_{current_date}.json"
-    #access_token = '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'  # Use a secret for production
-    access_token = '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'
-    url = f'https://api.github.com/repos/{repo_owner}/{repo_name}/contents/{file_path}'
-    headers = {'Authorization': f'token {access_token}'}
+    repo_owner = os.environ.get('GITHUB_OWNER', 'emilycampossindermann')
+    repo_name = os.environ.get('GITHUB_REPO', 'psysys_app')
+    access_token = os.environ.get('GITHUB_TOKEN', '')
 
-    # Encode data to be sent as Base64
-    content = json.dumps(data).encode('utf-8')
+    if not access_token:
+        print('[GitHub] Token not set. Add GITHUB_TOKEN to your .env file.')
+        return False, 'no_token'
+
+    # Safe filename: no slashes or colons
+    current_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    file_path = f"data-donation/graph_{current_date}.json"
+    url = f'https://api.github.com/repos/{repo_owner}/{repo_name}/contents/{file_path}'
+    headers = {
+        'Authorization': f'token {access_token}',
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+    }
+
+    content = json.dumps(data, ensure_ascii=False).encode('utf-8')
     encoded_content = base64.b64encode(content).decode('utf-8')
 
     payload = {
-        'message': 'Graph donation',
-        'content': encoded_content
+        'message': f'Map submission {current_date}',
+        'content': encoded_content,
     }
 
-    # Make a PUT request to update the file in the repository
-    response = requests.put(url, headers=headers, json=payload)
-
-    if response.status_code == 200:
-        print('Data sent to GitHub successfully')
-    else:
-        print('Failed to send data to GitHub')
-        print(response.text)
+    try:
+        response = requests.put(url, headers=headers, json=payload, timeout=15)
+        # 201 = created, 200 = updated (both are success)
+        if response.status_code in (200, 201):
+            print(f'[GitHub] Map submitted successfully → {file_path}')
+            return True, response.status_code
+        else:
+            print(f'[GitHub] Submission failed — HTTP {response.status_code}')
+            print(f'[GitHub] URL: {url}')
+            print(f'[GitHub] Response: {response.text[:500]}')
+            return False, response.status_code
+    except requests.exceptions.Timeout:
+        print('[GitHub] Request timed out after 15 s.')
+        return False, 'timeout'
+    except requests.exceptions.ConnectionError as e:
+        print(f'[GitHub] Connection error: {e}')
+        return False, 'connection_error'
+    except Exception as e:
+        print(f'[GitHub] Unexpected error: {e}')
+        return False, 'unknown'

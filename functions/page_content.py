@@ -116,6 +116,7 @@ def create_progress_bar(current_step, translation):
 
     # Progress bar container
     return html.Div(
+        className="psysys-progress-bar",
         style={
             "position": "relative",
             "display": "flex",
@@ -145,13 +146,147 @@ def create_progress_bar(current_step, translation):
         ],
     )
 
+# Helper: Build personalized result summary for step 5
+def _build_result_summary(session_data, severity_scores, translation):
+    elements = session_data.get('elements', [])
+    nodes = [e for e in elements if 'source' not in e.get('data', {})]
+    edges = [e for e in elements if 'source' in e.get('data', {})]
+
+    num_factors = len(nodes)
+    num_connections = len(edges)
+
+    scores = severity_scores or session_data.get('severity', {}) or {}
+    if scores:
+        avg_severity = round(sum(scores.values()) / len(scores), 1)
+    else:
+        avg_severity = "—"
+
+    # Count feedback loops: bidirectional edge pairs + self-loops
+    edge_set = set()
+    feedback_loops = 0
+    for e in edges:
+        src = e['data'].get('source')
+        tgt = e['data'].get('target')
+        if src == tgt:  # self-reinforcing loop
+            feedback_loops += 1
+        elif (tgt, src) in edge_set:  # bidirectional pair
+            feedback_loops += 1
+        edge_set.add((src, tgt))
+
+    # Top out-degree factor(s) — show all that share the maximum
+    out_degree = {}
+    for e in edges:
+        src = e['data'].get('source')
+        if src:
+            out_degree[src] = out_degree.get(src, 0) + 1
+    if out_degree:
+        top_out = max(out_degree.values())
+        top_ids = [fid for fid, cnt in out_degree.items() if cnt == top_out]
+        top_labels = [
+            next((n['data'].get('label', fid) for n in nodes if n['data'].get('id') == fid), fid)
+            for fid in top_ids
+        ]
+    else:
+        top_labels = []
+        top_out = 0
+
+    de = translation.get('welcome_01', '').startswith('Wilk')  # crude language detect
+    stat_box_style = {
+        "borderRadius": "12px",
+        "padding": "14px 18px",
+        "marginBottom": "10px",
+        "background": "rgba(255,255,255,0.72)",
+        "backdropFilter": "blur(10px)",
+        "WebkitBackdropFilter": "blur(10px)",
+        "boxShadow": "0 2px 10px rgba(111,76,255,0.10)",
+        "border": "1px solid rgba(111,76,255,0.12)",
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "14px",
+    }
+    icon_style = {
+        "fontSize": "22px",
+        "width": "36px",
+        "textAlign": "center",
+    }
+    label_style = {"fontFamily": "Outfit", "fontWeight": 300, "fontSize": "14px", "color": "#888", "marginBottom": "1px"}
+    value_style = {"fontFamily": "Outfit", "fontWeight": 600, "fontSize": "20px", "color": "#6F4CFF"}
+
+    def stat_box(icon, label, value, full_width=False):
+        box_style = {**stat_box_style}
+        if full_width:
+            box_style["gridColumn"] = "1 / -1"
+        return html.Div(style=box_style, children=[
+            html.Span(icon, style=icon_style),
+            html.Div([
+                html.P(label, style=label_style),
+                html.P(str(value), style=value_style),
+            ])
+        ])
+
+    legend_style = {
+        "borderRadius": "10px",
+        "padding": "12px 15px",
+        "marginTop": "12px",
+        "background": "rgba(255,255,255,0.55)",
+        "border": "1px solid rgba(111,76,255,0.10)",
+        "fontFamily": "Outfit",
+        "fontSize": "12px",
+        "color": "#666",
+        "fontWeight": 300,
+        "lineHeight": "1.6",
+    }
+
+    # Get user-selected target factor from block 4
+    target_factor = (session_data.get('dropdowns', {}).get('target', {}).get('value') or '—')
+    if isinstance(target_factor, list):
+        target_factor = target_factor[0] if target_factor else '—'
+
+    if de:
+        labels = {
+            'factors': "Anzahl der Faktoren",
+            'avg_sev': "Durchschnittlicher Schweregrad",
+            'connections': "Anzahl der Verbindungen",
+            'feedback': "Anzahl der Feedback-Schleifen",
+            'top': "Einflussreichster Faktor",
+            'target': "Dein Ausgewählter Schwerpunkt",
+        }
+    else:
+        labels = {
+            'factors': "Number of factors",
+            'avg_sev': "Average severity",
+            'connections': "Number of connections",
+            'feedback': "Feedback loops",
+            'top': "Most influential factor",
+            'target': "Your Selected Focus",
+        }
+
+    top_display = f"{', '.join(top_labels)} ({top_out} →)" if top_labels else "—"
+
+    return html.Div(
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "1fr 1fr",
+            "gap": "10px",
+        },
+        children=[
+            stat_box("🧩", labels['factors'], num_factors),
+            stat_box("📊", labels['avg_sev'], avg_severity),
+            stat_box("🔗", labels['connections'], num_connections),
+            stat_box("🔄", labels['feedback'], feedback_loops),
+            stat_box("⭐", labels['top'], top_display),
+            stat_box("🎯", labels['target'], target_factor),
+        ]
+    )
+
+
 # Function: Generate step content based on session data
-def generate_step_content(step, session_data, translation):
+def generate_step_content(step, session_data, translation, severity_scores=None):
     # Function content
     if step == 0:
         return html.Div(
             html.Div(
-                    style={**COMMON_STYLE, 
+                    className="psysys-step-page", style={**COMMON_STYLE, 
                             "background": "linear-gradient(to bottom, white, #f4f4f9, #d6ccff, #9b84ff, #6F4CFF)",
                             #"marginLeft": "-12px"
                             },
@@ -172,6 +307,7 @@ def generate_step_content(step, session_data, translation):
 
                         # Main Content Container
                         html.Div(
+                            className="psysys-content-row",
                             style={
                                 "display": "flex",
                                 "flexDirection": "row",
@@ -184,7 +320,7 @@ def generate_step_content(step, session_data, translation):
                                 # Left Section: Fixed Text Block and Likert Scales
                                 html.Div(
                                     style={
-                                        "width": "40%",
+                                        "width": "50%",
                                         "padding": "15px",
                                         #"marginLeft": "100px",
                                         "marginLeft": "0px"
@@ -226,18 +362,26 @@ def generate_step_content(step, session_data, translation):
                                 # Right Section: Video
                                 html.Div(
                                     style={
-                                        "width": "48.5%",  # Adjusted to align with the left section
+                                        "width": "43%",  # Adjusted to align with the left section
                                         "padding": "15px",
                                         "position": "relative",
                                     },
                                     children=[
                                         html.Iframe(
+                                            id='psysys-yt-player',
                                             src=translation["video_link_intro"],
                                             style={
                                                 **VIDEO_STYLE,
                                                 "marginTop": "0px",
                                                 "marginLeft": "0px",
                                             },
+                                        ),
+                                        dcc.Checklist(
+                                            id={'type': 'video-confirm', 'step': 0},
+                                            options=[{'label': html.Span([html.Span("* ", style={"color": "red", "fontWeight": "bold", "fontSize": "18px"}), translation['video_confirm']]), 'value': 'watched'}],
+                                            value=[],
+                                            style={"marginTop": "14px", "fontFamily": "Outfit", "fontWeight": 400,
+                                                   "fontSize": "16px", "color": "#6F4CFF", "textAlign": "center"},
                                         ),
                                     ],
                                 ),
@@ -351,7 +495,7 @@ def generate_step_content(step, session_data, translation):
 
         return html.Div(
             html.Div(
-                style={**COMMON_STYLE, 
+                className="psysys-step-page", style={**COMMON_STYLE, 
                             "background": "linear-gradient(to bottom, white, #f4f4f9, #d6ccff, #9b84ff, #6F4CFF)",
                             #"marginLeft": "-12px"
                             },
@@ -390,6 +534,7 @@ def generate_step_content(step, session_data, translation):
 
                     # Main Content Container
                     html.Div(
+                        className="psysys-content-row",
                         style={
                             "display": "flex",
                             "flexDirection": "row",
@@ -402,7 +547,7 @@ def generate_step_content(step, session_data, translation):
                             # Left Section: Fixed Text Block and Likert Scales
                             html.Div(
                                 style={
-                                    "width": "40%",
+                                    "width": "50%",
                                     "padding": "15px",
                                     #"marginLeft": "100px",
                                 },
@@ -466,7 +611,7 @@ def generate_step_content(step, session_data, translation):
                                             dbc.Modal(
                                                 [
                                                     dbc.ModalHeader(
-                                                        dbc.ModalTitle(translation['factor_description']),  # Replace with translation if needed
+                                                        dbc.ModalTitle(translation['factor_description']),
                                                         style={"fontFamily": "Outfit", "fontWeight": 500, "fontSize": "22px"},
                                                     ),
                                                     dbc.ModalBody(
@@ -477,210 +622,18 @@ def generate_step_content(step, session_data, translation):
                                                                 "fontSize": "18px",
                                                                 "lineHeight": "1.6",
                                                                 "width": "100%",
-                                                                "overflowY": "auto",  # Enable vertical scrolling
-                                                                "maxHeight": "80vh", 
+                                                                "overflowY": "auto",
+                                                                "maxHeight": "80vh",
                                                             },
                                                             children=[
-                                                                # Anxiety description
                                                                 html.Div(
                                                                     children=[
-                                                                        html.Span((translation['factors'][0],": "), style={"fontWeight": 500}),
-                                                                        translation["anxiety-description"]
+                                                                        html.Span(factor + ": ", style={"fontWeight": 500}),
+                                                                        desc,
                                                                     ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Changes in appetite description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][1],": "), style={"fontWeight": 500}),
-                                                                        translation["changes-appetite-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Concentration problems description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][2],": "), style={"fontWeight": 500}),
-                                                                        translation["concentration-problems-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Fear of the future description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][3],": "), style={"fontWeight": 500}),
-                                                                        translation["fear-of-future-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Guilt description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][4],": "), style={"fontWeight": 500}),
-                                                                        translation["guilt-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Hopelessness description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][5],": "), style={"fontWeight": 500}),
-                                                                        translation["hopelessness-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Interpersonal problems description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][6],": "), style={"fontWeight": 500}),
-                                                                        translation["interpersonal-problems-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Irritability description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][7],": "), style={"fontWeight": 500}),
-                                                                        translation["irritability-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Loss of interest description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][8],": "), style={"fontWeight": 500}),
-                                                                        translation["loss-of-interest-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Loss of motivation description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][9],": "), style={"fontWeight": 500}),
-                                                                        translation["loss-of-motivation-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Overthinking description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][10],": "), style={"fontWeight": 500}),
-                                                                        translation["overthinking-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Physical pain description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][11],": "), style={"fontWeight": 500}),
-                                                                        translation["physical-pain-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Procrastination description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][12],": "), style={"fontWeight": 500}),
-                                                                        translation["procrastination-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Reduced activity description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][13],": "), style={"fontWeight": 500}),
-                                                                        translation["reduced-activity-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Sadness description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][14],": "), style={"fontWeight": 500}),
-                                                                        translation["sadness-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Self-blame description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][15],": "), style={"fontWeight": 500}),
-                                                                        translation["self-blame-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Self-neglect description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][16],": "), style={"fontWeight": 500}),
-                                                                        translation["self-neglect-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Shame description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][17],": "), style={"fontWeight": 500}),
-                                                                        translation["shame-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Sleep problems description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][18],": "), style={"fontWeight": 500}),
-                                                                        translation["sleep-problems-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Social isolation description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][19],": "), style={"fontWeight": 500}),
-                                                                        translation["social-isolation-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Stress description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][20],": "), style={"fontWeight": 500}),
-                                                                        translation["stress-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Substance abuse description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][21],": "), style={"fontWeight": 500}),
-                                                                        translation["substance-abuse-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Suicidal thoughts description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][22],": "), style={"fontWeight": 500}),
-                                                                        translation["suicidal-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Tiredness description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][23],": "), style={"fontWeight": 500}),
-                                                                        translation["tiredness-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
-                                                                # Worry description
-                                                                html.Div(
-                                                                    children=[
-                                                                        html.Span((translation['factors'][24],": "), style={"fontWeight": 500}),
-                                                                        translation["worry-description"]
-                                                                    ],
-                                                                    style={"marginBottom": "20px"},  # Space after Factor 1
-                                                                ),
+                                                                    style={"marginBottom": "20px"},
+                                                                )
+                                                                for factor, desc in translation.get('factor_descriptions', {}).items()
                                                             ],
                                                         )
                                                     ),
@@ -724,18 +677,26 @@ def generate_step_content(step, session_data, translation):
                             # Right Section: Video
                             html.Div(
                                 style={
-                                    "width": "48.5%",  # Adjusted to align with the left section
+                                    "width": "43%",  # Adjusted to align with the left section
                                     "padding": "15px",
                                     "position": "relative",
                                 },
                                 children=[
                                     html.Iframe(
+                                        id='psysys-yt-player',
                                         src=translation["video_link_block_01"],
                                         style={
                                             **VIDEO_STYLE,
                                             "marginTop": "0px",
                                             "marginLeft": "0px",
                                         },
+                                    ),
+                                    dcc.Checklist(
+                                        id={'type': 'video-confirm', 'step': 1},
+                                        options=[{'label': html.Span([html.Span("* ", style={"color": "red", "fontWeight": "bold", "fontSize": "18px"}), translation['video_confirm']]), 'value': 'watched'}],
+                                        value=[],
+                                        style={"marginTop": "14px", "fontFamily": "Outfit", "fontWeight": 400,
+                                               "fontSize": "16px", "color": "#6F4CFF", "textAlign": "center"},
                                     ),
                                 ],
                             ),
@@ -757,7 +718,7 @@ def generate_step_content(step, session_data, translation):
                      'step': 3}
                      
         return html.Div(
-            style={**COMMON_STYLE, 
+            className="psysys-step-page", style={**COMMON_STYLE, 
                             "background": "linear-gradient(to bottom, white, #f4f4f9, #d6ccff, #9b84ff, #6F4CFF)",
                             #"marginLeft": "-12px"
                             },
@@ -776,6 +737,7 @@ def generate_step_content(step, session_data, translation):
                 html.Hr(style={"marginLeft": "0px", "width": "90%", "marginTop": "70px"}),
 
                 html.Div(
+                    className="psysys-content-row",
                     style={
                         "display": "flex",
                         "flexDirection": "row",
@@ -788,7 +750,7 @@ def generate_step_content(step, session_data, translation):
                         # Left Section: Fixed Text Block and Likert Scales
                         html.Div(
                             style={
-                                "width": "40%",
+                                "width": "50%",
                                 "padding": "15px",
                                 #"marginLeft": "100px",
                             },
@@ -854,18 +816,26 @@ def generate_step_content(step, session_data, translation):
                         # Right Section: Video
                         html.Div(
                             style={
-                                "width": "48.5%",  # Adjusted to align with the left section
+                                "width": "43%",  # Adjusted to align with the left section
                                 "padding": "15px",
                                 "position": "relative",
                             },
                             children=[
                                 html.Iframe(
+                                    id='psysys-yt-player',
                                     src=translation["video_link_block_02"],
                                     style={
                                         **VIDEO_STYLE,
                                         "marginTop": "0px",
                                         "marginLeft": "0px",
                                     },
+                                ),
+                                dcc.Checklist(
+                                    id={'type': 'video-confirm', 'step': 2},
+                                    options=[{'label': html.Span([html.Span("* ", style={"color": "red", "fontWeight": "bold", "fontSize": "18px"}), translation['video_confirm']]), 'value': 'watched'}],
+                                    value=[],
+                                    style={"marginTop": "14px", "fontFamily": "Outfit", "fontWeight": 400,
+                                           "fontSize": "16px", "color": "#6F4CFF", "textAlign": "center"},
                                 ),
                             ],
                         ),
@@ -885,7 +855,7 @@ def generate_step_content(step, session_data, translation):
         id_cycle2 = {'type': 'dynamic-dropdown', 
                      'step': 5}
         return html.Div(
-            style={**COMMON_STYLE, 
+            className="psysys-step-page", style={**COMMON_STYLE, 
                             "background": "linear-gradient(to bottom, white, #f4f4f9, #d6ccff, #9b84ff, #6F4CFF)",
                             #"marginLeft": "-12px"
                             },
@@ -906,6 +876,7 @@ def generate_step_content(step, session_data, translation):
                 #html.Hr(style={"marginLeft": "100px", "width": "90%", "marginTop": "-10px"}),
 
                 html.Div(
+                    className="psysys-content-row",
                     style={
                         "display": "flex",
                         "flexDirection": "row",
@@ -918,7 +889,7 @@ def generate_step_content(step, session_data, translation):
                         # Left Section: Fixed Text Block and Likert Scales
                         html.Div(
                             style={
-                                "width": "40%",
+                                "width": "50%",
                                 "padding": "15px",
                                 #"marginLeft": "100px",
                             },
@@ -984,18 +955,26 @@ def generate_step_content(step, session_data, translation):
                         # Right Section: Video
                         html.Div(
                             style={
-                                "width": "48.5%",  # Adjusted to align with the left section
+                                "width": "43%",  # Adjusted to align with the left section
                                 "padding": "15px",
                                 "position": "relative",
                             },
                             children=[
                                 html.Iframe(
+                                    id='psysys-yt-player',
                                     src=translation["video_link_block_03"],
                                     style={
                                         **VIDEO_STYLE,
                                         "marginTop": "0px",
                                         "marginLeft": "0px",
                                     },
+                                ),
+                                dcc.Checklist(
+                                    id={'type': 'video-confirm', 'step': 3},
+                                    options=[{'label': html.Span([html.Span("* ", style={"color": "red", "fontWeight": "bold", "fontSize": "18px"}), translation['video_confirm']]), 'value': 'watched'}],
+                                    value=[],
+                                    style={"marginTop": "14px", "fontFamily": "Outfit", "fontWeight": 400,
+                                           "fontSize": "16px", "color": "#6F4CFF", "textAlign": "center"},
                                 ),
                             ],
                         ),
@@ -1011,7 +990,7 @@ def generate_step_content(step, session_data, translation):
         id = {'type': 'dynamic-dropdown', 
               'step': 6}
         return html.Div(
-            style={**COMMON_STYLE, 
+            className="psysys-step-page", style={**COMMON_STYLE, 
                             "background": "linear-gradient(to bottom, white, #f4f4f9, #d6ccff, #9b84ff, #6F4CFF)",
                             #"marginLeft": "-12px"
                             },
@@ -1030,6 +1009,7 @@ def generate_step_content(step, session_data, translation):
                 html.Hr(style={"marginLeft": "0px", "width": "90%", "marginTop": "70px"}),
 
                 html.Div(
+                    className="psysys-content-row",
                     style={
                         "display": "flex",
                         "flexDirection": "row",
@@ -1042,7 +1022,7 @@ def generate_step_content(step, session_data, translation):
                         # Left Section: Fixed Text Block and Likert Scales
                         html.Div(
                             style={
-                                "width": "40%",
+                                "width": "50%",
                                 "padding": "15px",
                                 #"marginLeft": "100px",
                             },
@@ -1073,6 +1053,7 @@ def generate_step_content(step, session_data, translation):
                                             options=options,
                                             value=value_target,
                                             placeholder=translation["placeholder_dd_04"],
+                                            multi=False,
                                         ),
                                         className="dynamic-dropdown",
                                         ),
@@ -1091,18 +1072,26 @@ def generate_step_content(step, session_data, translation):
                         # Right Section: Video
                         html.Div(
                             style={
-                                "width": "48.5%",  # Adjusted to align with the left section
+                                "width": "43%",  # Adjusted to align with the left section
                                 "padding": "15px",
                                 "position": "relative",
                             },
                             children=[
                                 html.Iframe(
+                                    id='psysys-yt-player',
                                     src=translation["video_link_block_04"],
                                     style={
                                         **VIDEO_STYLE,
                                         "marginTop": "0px",
                                         "marginLeft": "0px",
                                     },
+                                ),
+                                dcc.Checklist(
+                                    id={'type': 'video-confirm', 'step': 4},
+                                    options=[{'label': html.Span([html.Span("* ", style={"color": "red", "fontWeight": "bold", "fontSize": "18px"}), translation['video_confirm']]), 'value': 'watched'}],
+                                    value=[],
+                                    style={"marginTop": "14px", "fontFamily": "Outfit", "fontWeight": 400,
+                                           "fontSize": "16px", "color": "#6F4CFF", "textAlign": "center"},
                                 ),
                             ],
                         ),
@@ -1117,7 +1106,7 @@ def generate_step_content(step, session_data, translation):
         selected_factors = session_data.get('add-nodes', [])
         options = [{'label': factor, 'value': factor} for factor in selected_factors]
         return html.Div(
-            style={**COMMON_STYLE, 
+            className="psysys-step-page", style={**COMMON_STYLE, 
                             "background": "linear-gradient(to bottom, white, #f4f4f9, #d6ccff, #9b84ff, #6F4CFF)",
                             #"marginLeft": "-12px"
                             },
@@ -1147,38 +1136,20 @@ def generate_step_content(step, session_data, translation):
                         "marginTop": "-25px"
                     },
                     children=[
-                        # Left Section: Fixed Text Block and Likert Scales
+                        # Left Section: Personalized summary statistics
                         html.Div(
                             style={
-                                "width": "40%",
+                                "width": "50%",
                                 "padding": "15px",
-                                #"marginLeft": "100px",
                             },
                             children=[
-                                # Exercise Description and Dropdown
                                 html.Div(
                                     style={
                                         "position": "sticky",
                                         "top": "20px",
                                         "zIndex": "10",
-                                        "padding": "15px",
-                                        "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)",
-                                        "borderRadius": "8px",
-                                        #"backgroundColor": "#F4F3FE",
-                                        "backgroundColor": "rgba(255, 255, 255, 0.65)"
                                     },
-                                    children=[
-                                        html.H5(dcc.Markdown(translation["feedback_text"], dangerously_allow_html=True), style={**TEXT_STYLE, "color": "black"}),
-                                        html.Div(style={"height": "10px"}),
-                                        html.Ol(
-                                            [
-                                                html.Li(translation['feedback_question_01'], style={"color": "black", "fontFamily": "Outfit", "fontWeight": 200, "fontSize": "15px"}),
-                                                html.Li(translation['feedback_question_02'], style={"color": "black", "fontFamily": "Outfit", "fontWeight": 200, "fontSize": "15px"}),
-                                                html.Li(translation['feedback_question_03'], style={"color": "black", "fontFamily": "Outfit", "fontWeight": 200, "fontSize": "15px"}),
-                                                html.Li(translation['feedback_question_04'], style={"color": "black", "fontFamily": "Outfit", "fontWeight": 200, "fontSize": "15px"}),
-                                            ],
-                                        )
-                                    ],
+                                    children=_build_result_summary(session_data, severity_scores, translation),
                                 ),
                             ],
                         ),
@@ -1186,7 +1157,7 @@ def generate_step_content(step, session_data, translation):
                         # Right Section: Video
                         html.Div(
                             style={
-                                "width": "48.5%",  # Adjusted to align with the left section
+                                "width": "43%",  # Adjusted to align with the left section
                                 "padding": "15px",
                                 "position": "relative",
                             },
@@ -1252,7 +1223,7 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
     color_schemes = [{'label': color, 'value': color} for color in translation['schemes']]
     sizing_schemes = [{'label': size, 'value': size} for size in translation['schemes']]
     return html.Div(
-        style={**COMMON_STYLE, 
+        className="psysys-step-page", style={**COMMON_STYLE, 
                "background": "linear-gradient(to bottom, white, #f4f4f9, #d6ccff, #9b84ff, #6F4CFF)",
                #"marginLeft": "-12px"
                },
@@ -1263,14 +1234,12 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                     children=[
                         html.H2(
                             translation['edit-map-title_01'],
-                            style={"fontFamily": "Outfit", 
-                                   #"fontWeight": "normal", 
-                                   #"color": "black", 
+                            style={"fontFamily": "Outfit",
                                    "fontSize": "36px",
                                    "color": "#4A4A8D",
                                    "fontWeight": 500,
                                    "textAlign": "center",
-                                   "marginLeft": "-150px",
+                                   "marginLeft": "0",
                                    "marginTop": "-95px"},
                         ),
                     ],
@@ -1278,19 +1247,29 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
 
                 html.Hr(style={"marginLeft": "0px", "width": "90%", "marginTop": "40px"}),
 
-                # Main content container (text and video)
+                # Main content container — same flex layout as step-5 results page
                 html.Div(
-                    style={**CONTENT_CONTAINER_STYLE},
+                    className="map-editor-panels",
+                    style={
+                        "display": "flex",
+                        "flexDirection": "row",
+                        "gap": "20px",
+                        "alignItems": "flex-start",
+                        "padding": "20px",
+                        "marginTop": "-25px",
+                    },
                     children=[
-                        # Plot section with question mark button
-                        
-                        
-                                        html.Br(),
-                                        html.Br(),
+                        # Left: editing window
                                         html.Div([
                                             html.Div([
-                                                html.Div(translation['edit-text'],
-                                                         style=TEXT_STYLE),
+                                                html.Div([
+                                                html.P(translation['edit-text'], style={**TEXT_STYLE, "marginBottom": "4px"}),
+                                                html.A("https://sosci.zdv.uni-mainz.de/PECAN_INT/?q=qnr4",
+                                                       href="https://sosci.zdv.uni-mainz.de/PECAN_INT/?q=qnr4",
+                                                       target="_blank",
+                                                       style={"fontFamily": "Outfit", "fontWeight": 500, "fontSize": "14px",
+                                                              "color": "#6F4CFF", "wordBreak": "break-all"}),
+                                            ]),
                                                 html.Div(style={"height":"20px"}),
                                                 html.Div([
                                                     dbc.Input(id='edit-node',
@@ -1373,27 +1352,24 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                                   'marginBottom': '10px'}),
                                                     
                                                         html.Div([
-                                                            dcc.Dropdown(id='color-scheme', 
-                                                                         options=color_schemes, 
-                                                                         value=color_scheme_data, 
-                                                                         placeholder=translation['placeholder_color_scheme'], 
-                                                                         multi=False, 
-                                                                         style={'width': '96%', 
-                                                                                #'borderRadius': '10px'
+                                                            dcc.Dropdown(id='color-scheme',
+                                                                         options=color_schemes,
+                                                                         value=color_scheme_data,
+                                                                         placeholder=translation['placeholder_color_scheme'],
+                                                                         multi=False,
+                                                                         style={'width': '96%',
                                                                                 "borderRadius": "50px",
                                                                                 'fontFamily': "Outfit",
                                                                                 "fontWeight": 300,
                                                                                 'fontSize': '17px'}),
                                                             dbc.Button([
-                                                                html.I(className="fas fa-solid fa-question")], 
-                                                                       id='help-color', 
-                                                                       color="light", 
+                                                                html.I(className="fas fa-solid fa-question")],
+                                                                       id='help-color',
+                                                                       color="light",
                                                                        className='delete-button',
-                                                                       style={#'border': 'none',
-                                                                              "backgroundColor": "transparent",
+                                                                       style={"backgroundColor": "transparent",
                                                                               "color": "#6F4CFF",
                                                                               "border": "2px solid #6F4CFF",
-                                                                              #'color': 'grey', 
                                                                               'marginLeft':'8px',
                                                                               "borderRadius": "50px",
                                                                                'padding' : '3px 10px 3px 10px',
@@ -1401,43 +1377,36 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                             dbc.Modal([
                                                                 dbc.ModalHeader(
                                                                     dbc.ModalTitle(translation['color_modal_title'])),
-                                                                    dbc.ModalBody("", 
+                                                                    dbc.ModalBody("",
                                                                                   id='modal-color-scheme-body')
-                                                                    ], 
+                                                                    ],
                                                                     id="modal-color-scheme",
-                                                                    backdrop = "False", 
-                                                                    style={"display": "flex", 
-                                                                           "gap": "5px", 
+                                                                    backdrop = "False",
+                                                                    style={"display": "flex",
+                                                                           "gap": "5px",
                                                                            'zIndex':'8000',
                                                                            'fontFamily': "Outfit",
                                                                            "fontWeight": 300,
                                                                            'fontSize': '18px'}),
-                                                        ], style={'display': 'flex', 
-                                                                  'alignItems': 'center', 
-                                                                  'marginBottom': '10px', 
-                                                                  'zIndex':'8000'}),
+                                                        ], style={'display': 'none'}),
 
                                                         html.Div([
-                                                            dcc.Dropdown(id='sizing-scheme', 
-                                                                         options=sizing_schemes, 
-                                                                         value=sizing_scheme_data, 
-                                                                         placeholder=translation['placeholder_sizing_scheme'], 
+                                                            dcc.Dropdown(id='sizing-scheme',
+                                                                         options=sizing_schemes,
+                                                                         value=sizing_scheme_data,
+                                                                         placeholder=translation['placeholder_sizing_scheme'],
                                                                          multi=False,
-                                                                         style={'width': '96%', 
-                                                                                #'borderRadius': '10px'
+                                                                         style={'width': '96%',
                                                                                 "borderRadius": "50px",
                                                                                 'fontFamily': "Outfit",
                                                                                 "fontWeight": 300,
                                                                                 'fontSize': '17px'}),
                                                             dbc.Button([
-                                                                html.I(className="fas fa-solid fa-question")], 
-                                                                       id='help-size', 
-                                                                       color="light", 
+                                                                html.I(className="fas fa-solid fa-question")],
+                                                                       id='help-size',
+                                                                       color="light",
                                                                        className='delete-button',
-                                                                       style={
-                                                                            #   'border': 'none',
-                                                                            #   'color': 'grey', 
-                                                                              "backgroundColor": "transparent",
+                                                                       style={"backgroundColor": "transparent",
                                                                               "color": "#6F4CFF",
                                                                               "border": "2px solid #6F4CFF",
                                                                               'marginLeft':'8px',
@@ -1447,20 +1416,17 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                             dbc.Modal([
                                                                 dbc.ModalHeader(
                                                                     dbc.ModalTitle(translation['sizing_modal_title'])),
-                                                                    dbc.ModalBody("", 
+                                                                    dbc.ModalBody("",
                                                                                   id='modal-sizing-scheme-body')
-                                                                    ], 
-                                                                    id="modal-sizing-scheme", 
-                                                                    style={"display": "flex", 
-                                                                           "gap": "5px", 
+                                                                    ],
+                                                                    id="modal-sizing-scheme",
+                                                                    style={"display": "flex",
+                                                                           "gap": "5px",
                                                                            'zIndex':'8000',
                                                                            'fontFamily': "Outfit",
                                                                            "fontWeight": 300,
                                                                            'fontSize': '18px'}),
-                                                        ], style={'display': 'flex', 
-                                                                  'alignItems': 'center', 
-                                                                  'marginBottom': '10px', 
-                                                                  'zIndex':'8000'}),
+                                                        ], style={'display': 'none'}),
                                                         html.Br(),
 
                                                         html.Div([
@@ -1512,8 +1478,8 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                                     id='back-btn', 
                                                                     color="light",
                                                                     className='delete-button', 
-                                                                    style={'marginTop': '-32px',
-                                                                           'marginLeft': '70px',
+                                                                    style={'marginTop': '0px',
+                                                                           'marginLeft': '0px',
                                                                             "backgroundColor": "#6F4CFF",
                                                                             "color": "white",
                                                                             #"border": "2px solid #6F4CFF",
@@ -1529,37 +1495,36 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                                 autohide=True, 
                                                                 delay={"show": 500, "hide": 100}
                                                             ),
-                                                        ], 
-                                                        style={'display': 'flex', 
-                                                                  'alignItems': 'center', 
-                                                                  'marginTop': '55px', 
-                                                                  'marginLeft': '365px'}),
+                                                        ],
+                                                        style={'display': 'flex',
+                                                                  'alignItems': 'center',
+                                                                  'justifyContent': 'flex-end',
+                                                                  'marginTop': '20px'}),
                                                         
                                                         ]), 
 
                                                     ], 
-                                                    id = 'editing-window', 
-                                                    style={'width': '500px', 
-                                                           'height':"auto", 
-                                                           'padding': '10px', 
-                                                           'marginTop': '-0px', 
-                                                           'marginLeft':'-290px', 
-                                                           'backgroundColor': 'white', 
-                                                           'borderRadius': '15px', 
-                                                           'boxShadow': '0 4px 8px rgba(0, 0, 0, 0.1)', 
+                                                    id = 'editing-window',
+                                                    style={'width': '32%',
+                                                           'height':"auto",
+                                                           'padding': '10px',
+                                                           'marginTop': '0px',
+                                                           'marginLeft': '0px',
+                                                           'backgroundColor': 'white',
+                                                           'borderRadius': '15px',
+                                                           'boxShadow': '0 4px 8px rgba(0, 0, 0, 0.1)',
                                                            'zIndex': '2000',
-                                                           #"backgroundColor": "rgba(201, 226, 255, 0.4)",
                                                            "backgroundColor": "rgba(255, 255, 255, 0.65)"}),
 
                         # Cytoscape graph section with vertically stacked controls
                         html.Div(
+                            id="map-cytoscape-panel",
                             style={
-                                "width": "48.5%",  # Adjusted to align with the left section
-                                "height": "50%",
+                                "width": "62%",
                                 "padding": "15px",
                                 "position": "relative",
-                                "marginLeft": "-150px",
-                                "marginTop": "-10px"
+                                "marginLeft": "0px",
+                                "marginTop": "0px"
                             },
                             children=[
                                 cyto.Cytoscape(
@@ -1610,7 +1575,7 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                                 },
                                                             },
                                                         ],
-                                            style={**VIDEO_STYLE, "marginLeft": "-140px"},
+                                            style={**VIDEO_STYLE, "marginLeft": "0px", "marginTop": "0px"},
                                             generateImage={'type': 'jpg', 'action': 'store'},
                                             ), 
                                 html.Div(
@@ -1621,7 +1586,7 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                     style={
                                         "position": "absolute",
                                         "top": "15px",  # Position at bottom-right of graph
-                                        "right": "165px",
+                                        "right": "25px",
                                         "font-size": "20px",  # Make it visible
                                         "color": "#888",  # Subtle gray
                                         "background": "rgba(255, 255, 255, 0.7)",  # Light background
@@ -1634,16 +1599,16 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                     ),
 
                                 html.Div(
-                                    style={'display': 'flex', 'justifyContent': 'center', 'gap': '10px', 
-                                           'marginTop': '40px', "marginLeft": "-300px"},
+                                    style={'display': 'flex', 'justifyContent': 'center', 'gap': '10px',
+                                           'marginTop': '40px'},
                                     children=[
                                         dbc.Button([
                                             html.I(
-                                                className="fas fa-solid fa-upload"), " ","PsySys Map"], 
+                                                className="fas fa-solid fa-upload"), " ","PsySys Map"],
                                                 id='load-map-btn',
-                                                #className="me-2", 
                                                 className='delete-button',
-                                                style={'border': 'none',
+                                                style={'display': 'none',
+                                                       'border': 'none',
                                                         #'color': '#8793c9',
                                                        'color': "white",
                                                         #'backgroundColor': 'lightgray',
@@ -1662,33 +1627,27 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                 id='upload-data',
                                                 children= dbc.Button([
                                                     html.I(
-                                                        className="fas fa-solid fa-upload"), " ", "file"], 
-                                                        color="secondary", 
+                                                        className="fas fa-solid fa-upload"), " ", "file"],
+                                                        color="secondary",
                                                         id='upload-map-btn',
                                                         className='delete-button',
                                                         style={'border': 'none',
-                                                            #    'color': '#8793c9',
-                                                            #    'backgroundColor': 'lightgray', 
                                                                'padding': '7px',
                                                                'color': "white",
-                                                                #'backgroundColor': 'lightgray',
-                                                                #"backgroundColor": "#6F4CFF",
                                                                 "backgroundColor": "transparent",
                                                                 "border": "2px solid white",
-                                                                #"background": 'linear-gradient(90deg, #9B84FF, #6F4CFF, #5738C8)',
-                                                                #"border": "none",
                                                                 'fontFamily': "Outfit",
                                                                 'fontWeight': 300,
                                                                 "borderRadius": "50px",
                                                                 "boxShadow": "0px 4px 8px rgba(0, 0, 0, 0.1)",}),
                                                 style={
-                                                    'display': 'inline-block',
+                                                    'display': 'none',
                                                 },
                                             ),
                                             
                                             dbc.Button([
                                                 html.I(
-                                                    className="fas fa-solid fa-download"), " ","file"], 
+                                                    className="fas fa-solid fa-download"), " ",".json"],
                                                     id='download-file-btn',
                                                     className='delete-button',
                                                     style={'border': 'none',
@@ -1708,7 +1667,7 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                             "boxShadow": "0px 4px 8px rgba(0, 0, 0, 0.1)",}),
                                             dbc.Button([
                                                 html.I(
-                                                    className="fas fa-solid fa-download"), " ","image"], 
+                                                    className="fas fa-solid fa-download"), " ",".jpg"],
                                                     className='delete-button',
                                                     id='download-image-btn',
                                                     style={'border': 'none',
@@ -1731,22 +1690,22 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
 
                                             dbc.Button(
                                                 [
-                                                    html.I(className="fas fa-solid fa-hand-holding-medical"),
-                                                    " Donate"  # Optional: Include text next to the icon for clarity
-                                                ], 
-                                                id="donate-btn", 
+                                                    html.I(className="fas fa-solid fa-paper-plane"),
+                                                    " Submit"
+                                                ],
+                                                id="donate-btn",
                                                 style={
-                                                    "borderRadius": "50px",  # Fully rounded corners
-                                                    "background": "linear-gradient(90deg, #6F4CFF, #9B84FF)",  # Distinct purple gradient
-                                                    "border": "none",  # No border
-                                                    "color": "white",  # White text/icon for contrast
-                                                    "padding": "10px 20px",  # Balanced padding for icon and optional text
-                                                    "fontSize": "16px",  # Slightly larger text/icon size for emphasis
-                                                    "boxShadow": "0px 4px 8px rgba(0, 0, 0, 0.1)",  # Subtle shadow for depth
-                                                    "transition": "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out"  # Smooth hover effects
+                                                    "borderRadius": "50px",
+                                                    "background": "linear-gradient(90deg, #6F4CFF, #9B84FF)",
+                                                    "border": "none",
+                                                    "color": "white",
+                                                    "padding": "10px 20px",
+                                                    "fontSize": "16px",
+                                                    "boxShadow": "0px 4px 8px rgba(0, 0, 0, 0.1)",
+                                                    "transition": "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out"
                                                 },
-                                                className='delete-button',
-                                                n_clicks=0  # Optional: initialize with zero clicks
+                                                className='glowing-button',
+                                                n_clicks=0
                                             ),
 
 
@@ -1892,20 +1851,39 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                             dbc.Modal([
                                                 dbc.ModalHeader(
                                                     dbc.ModalTitle(translation['donation_title'])),
-                                                    dbc.ModalBody(translation['donation_info'], 
+                                                    dbc.ModalBody(translation['donation_info'],
                                                                 id = 'donation-info'),
                                                     dbc.ModalFooter(
-                                                        dbc.Button(translation['donation_button'], 
-                                                                id="donation-agree", 
-                                                                className="ms-auto", 
-                                                                n_clicks=0))    
+                                                        dbc.Button(translation['donation_button'],
+                                                                id="donation-agree",
+                                                                className="ms-auto",
+                                                                n_clicks=0))
                                                             ],
-                                                            id='donation-modal', 
-                                                            is_open=False, 
+                                                            id='donation-modal',
+                                                            is_open=False,
                                                             style={'zIndex': '5000',
                                                             'fontFamily': "Outfit",
                                                                      "fontWeight": 300,
                                                                      'fontSize': '18px'}),
+
+                                            # Modal: submission result (success or error)
+                                            dbc.Modal([
+                                                dbc.ModalHeader(
+                                                    dbc.ModalTitle(id='submit-result-title'),
+                                                    style={"fontFamily": "Outfit", "fontWeight": 500}
+                                                ),
+                                                dbc.ModalBody(id='submit-result-body',
+                                                    style={"fontFamily": "Outfit", "fontWeight": 300, "fontSize": "18px"}
+                                                ),
+                                                dbc.ModalFooter(
+                                                    dbc.Button(translation['submit_close'],
+                                                        id='submit-result-close', n_clicks=0,
+                                                        style={"borderRadius": "50px", "fontFamily": "Outfit",
+                                                               "fontWeight": 300, "backgroundColor": "#6F4CFF",
+                                                               "border": "none", "color": "white"})
+                                                ),
+                                            ], id='submit-result-modal', is_open=False,
+                                               style={'zIndex': '5001', 'fontFamily': 'Outfit'}),
 
                                             ]
                                         ),
@@ -2171,7 +2149,7 @@ def create_tracking_tab(track_data, translation):
         )
 
 # Function: Create demo page
-def create_demo_page(translation):
+def create_demo_page(translation, step=0):
     return html.Div(
         style={
             "textAlign": "center",
@@ -2204,9 +2182,11 @@ def create_demo_page(translation):
                             "fontFamily": "Outfit",
                         },
                     ),
-                    html.P(
-                        dcc.Markdown(translation['demo'], dangerously_allow_html=True),
-                        style={"fontSize": "18px", "color": "#6c757d", "fontWeight": 300},
+                    html.Div(
+                        [html.P(s, style={"fontSize": "17px", "color": "#333", "fontWeight": 300, "marginBottom": "6px", "textAlign": "left"})
+                         for s in [translation.get('demo_step1',''), translation.get('demo_step2',''), translation.get('demo_step3','')]
+                         if s],
+                        style={"marginTop": "6px", "marginBottom": "4px"},
                     ),
 
                     html.Div(
@@ -2257,7 +2237,7 @@ def create_demo_page(translation):
             ),
             # Features Section
             html.Div(
-                style={"marginTop": "50px", "width": "100%"},
+                style={"marginTop": "20px", "width": "100%"},
                 children=[
                     dbc.Row(
                         [
@@ -2288,13 +2268,14 @@ def create_demo_page(translation):
                                             ),
                                         ],
                                         style={
-                                            #"backgroundColor": "#A5C9FF",
-                                            "backgroundColor": "#C9E2FF",
-                                            #"backgroundColor": "#D6E9F8",
+                                            "background": "rgba(201, 226, 255, 0.45)",
+                                            "backdropFilter": "blur(12px)",
+                                            "WebkitBackdropFilter": "blur(12px)",
+                                            "border": "1px solid rgba(255, 255, 255, 0.6)",
                                             "borderRadius": "15px",
-                                            "padding": "30px 20px",
+                                            "padding": "20px",
                                             "textAlign": "center",
-                                            "boxShadow": "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                                            "boxShadow": "0px 4px 20px rgba(111, 76, 255, 0.12)",
                                             "transition": "transform 0.2s ease-in-out",
                                         },
                                         className="feature-box",
@@ -2304,79 +2285,54 @@ def create_demo_page(translation):
                             ),
                             # Feature 2: Map Editor
                             dbc.Col(
-                                html.A(
-                                    href="/my-mental-health-map",  # Target URL
-                                    style={"textDecoration": "none"},
-                                    children=html.Div(
-                                        children=[
-                                            html.Div(translation['step-2'], style={"width": "80px", "height": "40px", "borderRadius": "50px", "backgroundColor": "#6F4CFF", "color": "white", "display": "flex", "alignItems": "center", "justifyContent": "center", "fontSize": "18px", "margin": "auto", "font": "Outfit", "fontWeight": "500"}),
-                                            #html.Span("②", style={"fontSize": "24px", "color": "#6F4CFF", "marginRight": "10px"}),
-                                            html.H4(
-                                                translation['editor'],
+                                html.Span(
+                                    id='demo-editor-wrapper',
+                                    style={'display': 'inline-block', 'width': '100%'},
+                                    children=[
+                                        html.A(
+                                            href="/my-mental-health-map" if step >= 5 else "#",
+                                            id='demo-editor-link',
+                                            style={"textDecoration": "none",
+                                                   "pointerEvents": "auto" if step >= 5 else "none"},
+                                            children=html.Div(
+                                                children=[
+                                                    html.Div(
+                                                        translation['step-2'] if step >= 5 else "🔒",
+                                                        style={"width": "80px", "height": "40px", "borderRadius": "50px", "backgroundColor": "#6F4CFF" if step >= 5 else "#aaa", "color": "white", "display": "flex", "alignItems": "center", "justifyContent": "center", "fontSize": "18px", "margin": "auto", "font": "Outfit", "fontWeight": "500"}
+                                                    ),
+                                                    html.H4(
+                                                        translation['editor'],
+                                                        style={
+                                                            "marginTop": "10px",
+                                                            "fontWeight": 600,
+                                                            "color": "black" if step >= 5 else "#888",
+                                                        },
+                                                    ),
+                                                    html.P(
+                                                        translation['editor-sub'],
+                                                        style={
+                                                            "fontSize": "17px",
+                                                            "color": "black" if step >= 5 else "#aaa",
+                                                            "fontWeight": 300,
+                                                        },
+                                                    ),
+                                                ],
                                                 style={
-                                                    "marginTop": "10px",
-                                                    "fontWeight": 600,
-                                                    "color": "black",
+                                                    "background": "rgba(214, 204, 255, 0.45)" if step >= 5 else "rgba(200, 200, 200, 0.3)",
+                                                    "backdropFilter": "blur(12px)",
+                                                    "WebkitBackdropFilter": "blur(12px)",
+                                                    "border": "1px solid rgba(255, 255, 255, 0.6)",
+                                                    "borderRadius": "15px",
+                                                    "padding": "20px",
+                                                    "textAlign": "center",
+                                                    "boxShadow": "0px 4px 20px rgba(111, 76, 255, 0.12)",
+                                                    "transition": "transform 0.2s ease-in-out",
+                                                    "opacity": "1.0" if step >= 5 else "0.6",
                                                 },
+                                                className="feature-box" if step >= 5 else "",
                                             ),
-                                            html.P(
-                                                translation['editor-sub'],
-                                                style={
-                                                    "fontSize": "17px",
-                                                    "color": "black",
-                                                    "fontWeight": 300,
-                                                },
-                                            ),
-                                        ],
-                                        style={
-                                            "backgroundColor": "#D6CCFF",
-                                            "borderRadius": "15px",
-                                            "padding": "30px 20px",
-                                            "textAlign": "center",
-                                            "boxShadow": "0px 4px 10px rgba(0, 0, 0, 0.1)",
-                                            "transition": "transform 0.2s ease-in-out",
-                                        },
-                                        className="feature-box",
-                                    ),
-                                ),
-                                md=3,
-                            ),
-                            # Feature 3: Map Tracker
-                            dbc.Col(
-                                html.A(
-                                    href="/track-my-mental-health-map",  # Target URL
-                                    style={"textDecoration": "none"},
-                                    children=html.Div(
-                                        children=[
-                                            html.Div(translation['step-3'], style={"width": "80px", "height": "40px", "borderRadius": "50px", "backgroundColor": "#6F4CFF", "color": "white", "display": "flex", "alignItems": "center", "justifyContent": "center", "fontSize": "18px", "margin": "auto", "font": "Outfit", "fontWeight": "500"}),
-                                            #html.Span("③", style={"fontSize": "24px", "color": "#6F4CFF", "marginRight": "10px"}),
-                                            html.H4(
-                                                translation['tracker'],
-                                                style={
-                                                    "marginTop": "10px",
-                                                    "fontWeight": 600,
-                                                    "color": "black",
-                                                },
-                                            ),
-                                            html.P(
-                                                translation['tracker-sub'],
-                                                style={
-                                                    "fontSize": "17px",
-                                                    "color": "black",
-                                                    "fontWeight": 300,
-                                                },
-                                            ),
-                                        ],
-                                        style={
-                                            "backgroundColor": "#F4D9FF",
-                                            "borderRadius": "15px",
-                                            "padding": "30px 20px",
-                                            "textAlign": "center",
-                                            "boxShadow": "0px 4px 10px rgba(0, 0, 0, 0.1)",
-                                            "transition": "transform 0.2s ease-in-out",
-                                        },
-                                        className="feature-box",
-                                    ),
+                                        ),
+                                    ]
                                 ),
                                 md=3,
                             ),

@@ -320,23 +320,27 @@ def node_sizing(chosen_scheme, graph_data, severity_scores):
     
     return graph_data
 
-# Color most influential fator in graph 
+# Color most influential factor in graph
 def color_target(graph_data):
     influential_factor = graph_data['dropdowns']['target']['value']
     stylesheet = graph_data['stylesheet']
 
     if influential_factor:
-        stylesheet.append({'selector': f'node[id = "{influential_factor[0]}"]',
-                           'style': {'border-color': '#BF00FF','border-width': '2px', 'font-family': 'Outfit, sans-serif'}})
-        
+        # value is a string (multi=False dropdown) — handle both string and legacy list
+        factor_id = influential_factor[0] if isinstance(influential_factor, list) else influential_factor
+        stylesheet.append({'selector': f'node[id = "{factor_id}"]',
+                           'style': {'border-color': '#6F4CFF', 'border-width': '5px',
+                                     'border-opacity': 1, 'font-family': 'Outfit, sans-serif'}})
+
     graph_data['stylesheet'] = stylesheet
     return graph_data
 
 # Reset target color
 def reset_target(graph_data):
     stylesheet = graph_data['stylesheet']
-    new_stylesheet = [style for style in stylesheet 
-                      if not (style.get('style', {}).get('border-color') == '#BF00FF')]
+    new_stylesheet = [style for style in stylesheet
+                      if not (style.get('style', {}).get('border-color') in ('#BF00FF', '#6F4CFF')
+                              and style.get('style', {}).get('border-width') == '5px')]
     graph_data['stylesheet'] = new_stylesheet
     return graph_data
 

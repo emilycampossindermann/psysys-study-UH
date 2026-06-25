@@ -14,6 +14,22 @@ body {
     animation: gradientAnimation 12s ease infinite; /* Optional animation */
     margin: 0;
     font-family: 'Arial', sans-serif; /* Example font */
+    /* NOTE: do NOT set overflow-x:hidden on body in Safari/WebKit —
+       it breaks pointer-events on position:fixed elements (nav bar). */
+}
+
+/* Remove Bootstrap column gutters that create edge gaps */
+.container-fluid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+.container-fluid > .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+.container-fluid > .row > [class*="col-"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
 @keyframes gradientAnimation {
@@ -320,6 +336,36 @@ body {
 .glowing-button:hover {
     box-shadow: 0 0 5px #004AAD, 0 0 10px #AE52FF, 0 0 15px #CB6CE6;
     transition: box-shadow 0.5s ease-in-out;
+}
+
+/* Pulsing glow for congrats modal editor button */
+@keyframes pulse-glow {
+    0%   { box-shadow: 0 0 6px #6F4CFF, 0 0 12px #AE52FF; }
+    50%  { box-shadow: 0 0 16px #6F4CFF, 0 0 30px #CB6CE6, 0 0 40px #AE52FF; }
+    100% { box-shadow: 0 0 6px #6F4CFF, 0 0 12px #AE52FF; }
+}
+
+#congrats-editor-btn {
+    background: linear-gradient(135deg, #6F4CFF, #AE52FF);
+    color: white !important;
+    animation: pulse-glow 2s ease-in-out infinite;
+    border: none;
+    cursor: pointer;
+}
+
+/* Go-to-edit button glows continuously at step 5 */
+#go-to-edit.glowing-button {
+    background: linear-gradient(135deg, #6F4CFF, #AE52FF) !important;
+    color: white !important;
+    animation: pulse-glow 2s ease-in-out infinite;
+    border: none !important;
+}
+
+/* Logo hover glow */
+.nav-logo-link img:hover,
+.nav-logo-link:hover img {
+    box-shadow: 0 0 10px rgba(111, 76, 255, 0.6), 0 0 20px rgba(174, 82, 255, 0.3);
+    transition: box-shadow 0.3s ease;
 }
 
 /* NavLink Style */
@@ -643,6 +689,83 @@ body {
 
 .demo-nav-fix .dropdown-item:hover {
     background-color: rgba(0, 0, 0, 0.1) !important; /* Light hover effect */
+}
+
+/* ── Responsive: Psychoeducation steps ─────────────────────────────────── */
+@media (max-width: 900px) {
+    .psysys-content-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .psysys-content-row > div {
+        width: 100% !important;
+        margin-left: 0 !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+    /* Remove negative margin on video iframe on narrow screens */
+    .psysys-video {
+        margin-left: 0 !important;
+        margin-top: 0 !important;
+    }
+}
+
+/* ── Responsive: Map Editor ─────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    /* The CONTENT_CONTAINER_STYLE flex row that holds editing-window + cytoscape */
+    .map-editor-panels {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    /* Editing window — reset fixed width and negative margin */
+    #editing-window {
+        width: 100% !important;
+        margin-left: 0 !important;
+        box-sizing: border-box !important;
+    }
+    /* Cytoscape panel — reset fixed width and negative margin */
+    #map-cytoscape-panel {
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-top: 20px !important;
+    }
+}
+
+/* ── Responsive: Page-level padding (COMMON_STYLE overrides) ────────────── */
+@media (max-width: 900px) {
+    /* Reduce left padding so content doesn't get crushed.
+       padding-top must be tall enough to clear the fixed nav bar,
+       which can wrap to two lines on very narrow screens. */
+    .psysys-step-page {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        padding-top: 200px !important;
+    }
+}
+
+/* ── Responsive: Progress bar ───────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .psysys-progress-bar {
+        margin-left: 0 !important;
+        overflow-x: auto !important;
+        padding-bottom: 8px !important;
+        /* Allow horizontal scroll when too narrow to show all steps */
+        flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* Shrink each step circle + label on narrow screens */
+    .psysys-progress-bar > div {
+        min-width: 55px !important;
+        flex-shrink: 0 !important;
+    }
+    .psysys-progress-bar > div > div:first-child {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 12px !important;
+    }
+    .psysys-progress-bar > div > div:last-child {
+        font-size: 11px !important;
+    }
 }
 
 

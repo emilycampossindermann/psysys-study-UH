@@ -9,7 +9,6 @@ from functions.map_build import delete_edge
 from functions.map_style import (node_sizing, calculate_degree_centrality, color_scheme)
 from functions.data_format import (format_export_data, send_to_github)
 from functions.page_content import (create_likert_scale)
-from datetime import datetime
 
 # Set edit graph to PsySys graph when user clicks on "redirect" button at the end of PsySys session
 def redirect_edit(n_clicks, session_data, severity_scores):
@@ -532,8 +531,8 @@ def update_severity_scores(severity_values, session_data, existing_severity_scor
 def update_custom_color_dropdown(value):
     return value
 
-# Save edge type (reliver, amplifier)
-def save_edge_type(n_clicks, edge_name, edge_type, edge_data):
+# Save edge type (reliever, amplifier) — legacy store version
+def save_edge_type_store(n_clicks, edge_name, edge_type, edge_data):
     if n_clicks > 0 and edge_name and edge_type:
         # Initialize edge_data as a dictionary if it is None
         if edge_data is None:
@@ -722,13 +721,42 @@ def donation_modal(n_clicks, is_open):
     return is_open
 
 # Donation button functionality
-def donate_button_clicked(n_clicks, data, current_style, severity_scores, edge_data, annotations, is_open):
+def donate_button_clicked(n_clicks, data, current_style, severity_scores, edge_data, annotations, is_open, language):
     if n_clicks:
+        from constants import translations
+        t = translations.get(language or 'de', translations['de'])
         graph_data = format_export_data(data, current_style, severity_scores, edge_data, annotations)
-        send_to_github(graph_data)
-        return 'Thank you for your donation! Data sent to GitHub.', False
+        success, status_code = send_to_github(graph_data)
+        if success:
+            from dash import html as _h
+            study_link = t.get('submit_success_link', 'https://sosci.zdv.uni-mainz.de/PECAN_INT/?q=qnr4')
+            title = t.get('submit_success_title', 'Map submitted ✓')
+            body = _h.Div([
+                _h.P(t.get('submit_success_body', 'Your map was submitted successfully.'),
+                     style={"fontFamily": "Outfit", "fontWeight": 300, "fontSize": "18px", "marginBottom": "8px"}),
+                _h.A(study_link, href=study_link, target="_blank",
+                     style={"fontFamily": "Outfit", "fontWeight": 600, "fontSize": "16px",
+                            "color": "#6F4CFF", "wordBreak": "break-all"}),
+            ])
+        else:
+            title = t.get('submit_error_title', 'Submission failed')
+            base_body = t.get('submit_error_body', 'Something went wrong. Please try again.')
+            detail_prefix = t.get('submit_error_detail', 'Error code: ')
+            # Translate common codes into friendly hints
+            hints = {
+                401: ' (Token expired or invalid — please renew your GitHub token.)',
+                403: ' (Token lacks write permission to the repository.)',
+                404: ' (Repository not found — check GITHUB_OWNER and GITHUB_REPO in .env.)',
+                422: ' (Unprocessable — file may already exist at this path.)',
+                'no_token': ' (No token configured — add GITHUB_TOKEN to .env.)',
+                'timeout': ' (Request timed out — check your internet connection.)',
+                'connection_error': ' (Cannot reach GitHub — check your internet connection.)',
+            }
+            hint = hints.get(status_code, '')
+            body = f"{base_body}\n{detail_prefix}{status_code}{hint}"
+        return '', False, True, title, body, True
 
-    return 'Donate to send data to GitHub', is_open
+    return '', is_open, False, '', '', False
 
 # Blur background when information modal is open 
 def toggle_blur(donation_modal, color_modal, sizing_modal, inspect_modal, factor_edit, edge_edit):
@@ -1002,7 +1030,7 @@ def register_editing_callbacks(app):
         [State('edge-name-input', 'value'),  # Get edge name from input
         State('edge-type-dropdown', 'value'),  # Get selected edge type from dropdown
         State('edge-data-store', 'data')]  # Get current data from store
-    )(save_edge_type)
+    )(save_edge_type_store)
 
     app.callback(
         Output('my-mental-health-map', 'stylesheet'),
@@ -1075,16 +1103,28 @@ def register_editing_callbacks(app):
 
     app.callback(
         [Output('dummy-output', 'children'),
-         Output("donation-modal", "is_open", allow_duplicate=True)],
+         Output("donation-modal", "is_open", allow_duplicate=True),
+         Output('submit-result-modal', 'is_open'),
+         Output('submit-result-title', 'children'),
+         Output('submit-result-body', 'children'),
+         Output('donate-btn', 'disabled')],
         Input('donation-agree', 'n_clicks'),
         [State('edit-map-data', 'data'),
         State('my-mental-health-map', 'stylesheet'),
-        State('severity-scores-edit', 'data'), ##
+        State('severity-scores-edit', 'data'),
         State('edge-data', 'data'),
         State('annotation-data', 'data'),
-        State("donation-modal", "is_open")],
+        State("donation-modal", "is_open"),
+        State('language-dropdown', 'value')],
         prevent_initial_call = True
     )(donate_button_clicked)
+
+    app.callback(
+        Output('submit-result-modal', 'is_open', allow_duplicate=True),
+        Input('submit-result-close', 'n_clicks'),
+        State('submit-result-modal', 'is_open'),
+        prevent_initial_call=True
+    )(lambda n, is_open: False if n else is_open)
 
     app.callback(
         Output('edit-wrapper', 'className'),

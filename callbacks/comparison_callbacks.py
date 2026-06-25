@@ -56,7 +56,6 @@ def upload_tracking_graph(contents, existing_marks, current_max, current_value, 
 
                 # Update track_data
                 track_data['timeline-max'] = max_val
-                track_data['timeline-max'] = max_val
                 track_data['timeline-marks'] = existing_marks
 
                 map_store[filename] = {'elements': new_elements, 
