@@ -553,12 +553,26 @@ def show_editor_modal(pathname, already_shown, language):
                 "margin": "0 0 3px 0", "color": "#1a1a2e"}
     body_s  = {"fontFamily": "Outfit", "fontWeight": 300, "fontSize": "14px",
                 "margin": "0", "color": "#555"}
-    # Build step 3 with clickable link
+    # Build step 3 with styled back-to-study button
     step3_body = _h.Div([
-        _h.P(t.get('editor_modal_step3_body',''), style={**body_s, "marginBottom": "4px"}),
-        _h.A(study_link, href=study_link, target="_blank",
-             style={"fontFamily": "Outfit", "fontWeight": 500, "fontSize": "14px",
-                    "color": "#6F4CFF", "wordBreak": "break-all"}),
+        _h.P(t.get('editor_modal_step3_body',''), style={**body_s, "marginBottom": "8px"}),
+        _h.A(
+            t.get('submit_back_to_study', '→ Zurück zur Studie'),
+            href=study_link,
+            target="_blank",
+            style={
+                "display": "inline-block",
+                "padding": "9px 20px",
+                "backgroundColor": "#6F4CFF",
+                "color": "white",
+                "borderRadius": "50px",
+                "fontFamily": "Outfit",
+                "fontWeight": 600,
+                "fontSize": "14px",
+                "textDecoration": "none",
+                "boxShadow": "0 3px 12px rgba(111,76,255,0.35)",
+            }
+        ),
     ])
     steps = [
         (t.get('editor_modal_step1_title',''), t.get('editor_modal_step1_body','')),
@@ -822,4 +836,5 @@ def register_layout_callbacks(app):
         Input('editor-modal-close', 'n_clicks'),
         prevent_initial_call=True
     )(lambda n: False if n else dash.no_update)
+
 

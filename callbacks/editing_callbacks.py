@@ -724,36 +724,65 @@ def donation_modal(n_clicks, is_open):
 def donate_button_clicked(n_clicks, data, current_style, severity_scores, edge_data, annotations, is_open, language):
     if n_clicks:
         from constants import translations
+        from dash import html as _h
         t = translations.get(language or 'de', translations['de'])
+        study_link = t.get('submit_success_link', 'https://sosci.zdv.uni-mainz.de/PECAN_INT/?q=qnr4')
+
+        # Build the "go back to study" button — shown on both success and error
+        study_btn = _h.A(
+            t.get('submit_back_to_study', '→ Zurück zur Studie'),
+            href=study_link,
+            target="_blank",
+            style={
+                "display": "block",
+                "margin": "20px auto 4px auto",
+                "padding": "14px 28px",
+                "backgroundColor": "#6F4CFF",
+                "color": "white",
+                "borderRadius": "50px",
+                "fontFamily": "Outfit",
+                "fontWeight": 600,
+                "fontSize": "18px",
+                "textAlign": "center",
+                "textDecoration": "none",
+                "width": "fit-content",
+                "boxShadow": "0 4px 18px rgba(111,76,255,0.35)",
+            }
+        )
+
         graph_data = format_export_data(data, current_style, severity_scores, edge_data, annotations)
         success, status_code = send_to_github(graph_data)
+
         if success:
-            from dash import html as _h
-            study_link = t.get('submit_success_link', 'https://sosci.zdv.uni-mainz.de/PECAN_INT/?q=qnr4')
             title = t.get('submit_success_title', 'Map submitted ✓')
             body = _h.Div([
                 _h.P(t.get('submit_success_body', 'Your map was submitted successfully.'),
-                     style={"fontFamily": "Outfit", "fontWeight": 300, "fontSize": "18px", "marginBottom": "8px"}),
-                _h.A(study_link, href=study_link, target="_blank",
-                     style={"fontFamily": "Outfit", "fontWeight": 600, "fontSize": "16px",
-                            "color": "#6F4CFF", "wordBreak": "break-all"}),
-            ])
+                     style={"fontFamily": "Outfit", "fontWeight": 300, "fontSize": "18px",
+                            "textAlign": "center", "marginBottom": "4px"}),
+                study_btn,
+            ], style={"textAlign": "center"})
         else:
-            title = t.get('submit_error_title', 'Submission failed')
-            base_body = t.get('submit_error_body', 'Something went wrong. Please try again.')
-            detail_prefix = t.get('submit_error_detail', 'Error code: ')
-            # Translate common codes into friendly hints
             hints = {
-                401: ' (Token expired or invalid — please renew your GitHub token.)',
-                403: ' (Token lacks write permission to the repository.)',
-                404: ' (Repository not found — check GITHUB_OWNER and GITHUB_REPO in .env.)',
-                422: ' (Unprocessable — file may already exist at this path.)',
-                'no_token': ' (No token configured — add GITHUB_TOKEN to .env.)',
-                'timeout': ' (Request timed out — check your internet connection.)',
-                'connection_error': ' (Cannot reach GitHub — check your internet connection.)',
+                401: 'Token abgelaufen oder ungültig.',
+                403: 'Token hat keine Schreibrechte.',
+                404: 'Repository nicht gefunden.',
+                422: 'Datei existiert bereits.',
+                'no_token': 'Kein Token konfiguriert.',
+                'timeout': 'Zeitüberschreitung — Internetverbindung prüfen.',
+                'connection_error': 'GitHub nicht erreichbar — Internetverbindung prüfen.',
             }
-            hint = hints.get(status_code, '')
-            body = f"{base_body}\n{detail_prefix}{status_code}{hint}"
+            hint = hints.get(status_code, str(status_code))
+            title = t.get('submit_error_title', 'Fehler beim Einreichen')
+            body = _h.Div([
+                _h.P(f"{t.get('submit_error_body', 'Beim Einreichen ist ein Fehler aufgetreten.')} ({hint})",
+                     style={"fontFamily": "Outfit", "fontWeight": 300, "fontSize": "16px",
+                            "textAlign": "center", "color": "#c0392b", "marginBottom": "4px"}),
+                _h.P(t.get('submit_error_continue', 'Du kannst trotzdem zur Studie zurückkehren:'),
+                     style={"fontFamily": "Outfit", "fontWeight": 300, "fontSize": "16px",
+                            "textAlign": "center", "marginBottom": "0px"}),
+                study_btn,
+            ], style={"textAlign": "center"})
+
         return '', False, True, title, body, True
 
     return '', is_open, False, '', '', False

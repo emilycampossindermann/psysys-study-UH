@@ -1,9 +1,10 @@
 import json, base64, requests, os, datetime
+from pathlib import Path
 from functions.map_style import calculate_degree_centrality
 from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).parent.parent / '.env')
 
 # Format graph data to export
 def format_export_data(data, current_style, severity_scores, edge_data, annotations):

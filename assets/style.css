@@ -361,6 +361,14 @@ body {
     border: none !important;
 }
 
+/* Submit button glows continuously in the map editor */
+#donate-btn.glowing-button {
+    background: linear-gradient(135deg, #6F4CFF, #AE52FF) !important;
+    color: white !important;
+    animation: pulse-glow 2s ease-in-out infinite;
+    border: none !important;
+}
+
 /* Logo hover glow */
 .nav-logo-link img:hover,
 .nav-logo-link:hover img {

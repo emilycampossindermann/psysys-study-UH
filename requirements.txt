@@ -6,4 +6,5 @@ plotly
 numpy
 matplotlib
 gunicorn
+python-dotenv
 

@@ -1263,12 +1263,24 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                         html.Div([
                                             html.Div([
                                                 html.Div([
-                                                html.P(translation['edit-text'], style={**TEXT_STYLE, "marginBottom": "4px"}),
-                                                html.A("https://sosci.zdv.uni-mainz.de/PECAN_INT/?q=qnr4",
-                                                       href="https://sosci.zdv.uni-mainz.de/PECAN_INT/?q=qnr4",
-                                                       target="_blank",
-                                                       style={"fontFamily": "Outfit", "fontWeight": 500, "fontSize": "14px",
-                                                              "color": "#6F4CFF", "wordBreak": "break-all"}),
+                                                html.P(translation['edit-text'], style={**TEXT_STYLE, "marginBottom": "8px"}),
+                                                html.A(
+                                                    translation.get('submit_back_to_study', '→ Zurück zur Studie'),
+                                                    href=translation.get('submit_success_link', 'https://sosci.zdv.uni-mainz.de/PECAN_INT/?q=qnr4'),
+                                                    target="_blank",
+                                                    style={
+                                                        "display": "inline-block",
+                                                        "padding": "10px 22px",
+                                                        "backgroundColor": "#6F4CFF",
+                                                        "color": "white",
+                                                        "borderRadius": "50px",
+                                                        "fontFamily": "Outfit",
+                                                        "fontWeight": 600,
+                                                        "fontSize": "15px",
+                                                        "textDecoration": "none",
+                                                        "boxShadow": "0 4px 14px rgba(111,76,255,0.35)",
+                                                    }
+                                                ),
                                             ]),
                                                 html.Div(style={"height":"20px"}),
                                                 html.Div([
@@ -1575,9 +1587,9 @@ def create_mental_health_map_tab(edit_map_data, color_scheme_data, sizing_scheme
                                                                 },
                                                             },
                                                         ],
-                                            style={**VIDEO_STYLE, "marginLeft": "0px", "marginTop": "0px"},
+                                            style={**VIDEO_STYLE, "width": "calc(100% - 3cm)", "marginLeft": "1.5cm", "marginTop": "0px"},
                                             generateImage={'type': 'jpg', 'action': 'store'},
-                                            ), 
+                                            ),
                                 html.Div(
                                     [
                                         html.I(className="fas fa-magnifying-glass-plus"),  # Font Awesome Zoom Icon
@@ -2173,7 +2185,7 @@ def create_demo_page(translation, step=0):
                         style={"width": "200px", "marginBottom": "20px"},
                     ),
                     html.H1(
-                        "Desktop Demo",
+                        translation.get('demo_title', 'Welcome to PsySys'),
                         style={
                             "fontSize": "55px",
                             #"color": "#4A4A8D",
